@@ -181,6 +181,53 @@ def ref_cnt_distribute_graph(df, title, filename, cnt_ylim : list = None, dist_y
     #plt.show()
     plt.savefig(filename+'_hist.png', dpi=300)
 
+def ref_cnt_distribute(ref_count, filename='output', log_scale=False):
+    if not log_scale:
+        bin_list = ref_count.unique()
+        bin_list = np.append(bin_list, bin_list.max()+1)
+        bin_list = np.sort(bin_list)
+  
+    counts, edges = np.histogram(ref_count, bins=bin_list, density=False)
+    relative_counts, edges = np.histogram(ref_count, bins=bin_list, density=True)
+    
+    counts_list = list(counts)
+    print(counts_list.index(counts.max()), counts.max())
+
+    if not log_scale:
+        df = pd.DataFrame()
+        df['edges'] = edges[:-1]
+        df['counts'] = counts
+        df['multiply_counts'] = df['edges'] * df['counts']
+        df['relative_counts'] = relative_counts
+        #df.to_csv('distributes.csv')
+
+    return edges[:-1], counts, df['multiply_counts'].to_numpy(), relative_counts
+
+def ref_cnt_distribute_graph_linear(df, title, filename):
+    y1 = df['count'][(df['type']=='read')]
+    y2 = df['count'][(df['type']=='write')]
+    y3 = df['count'][(df['type']=='read&write')]
+
+    fig, ax = plot_frame((3, 3), title=title, xlabel='reference count', ylabel='# of memory block', font_size=40, share_yaxis='col')
+    y = [y1, y2, y3]
+    color = ['blue', 'red', 'green']
+    label = ['read', 'write', 'read&write']
+
+    for i in range(3):
+        edges, counts, multiply_counts, relative_counts = ref_cnt_distribute(y[i], log_scale=False)
+
+        # read&write graph
+        ax[i][0].bar(edges, counts, color=color[i], edgecolor=color[i], label=label[i])
+        ax[i][1].bar(edges, multiply_counts, color=color[i], edgecolor=color[i], label=label[i])
+        ax[i][2].bar(edges, relative_counts, color=color[i], edgecolor=color[i], label=label[i])
+    
+        ax[i][0].legend(loc='upper right', ncol=1, fontsize=20)
+        ax[i][1].legend(loc='upper right', ncol=1, fontsize=20)
+        ax[i][2].legend(loc='upper right', ncol=1, fontsize=20)
+    
+    #plt.show()
+    plt.savefig(filename+'_hist.png', dpi=300)
+
 #-----
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="plot reference count per each block")
@@ -210,3 +257,4 @@ if __name__ == "__main__":
     if (args.plot_distribution):
         plt.clf() # Clear the current figure
         ref_cnt_distribute_graph(memdf1, title=args.title, filename=args.output)
+        ref_cnt_distribute_graph_linear(memdf1, title=args.title, filename=args.output)
